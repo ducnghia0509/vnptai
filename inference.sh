@@ -1,3 +1,3 @@
 #!/bin/bash
 # Chạy inference
-python main.py2
+python main.py

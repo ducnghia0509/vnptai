@@ -8,3 +8,4 @@ venv/
 filtered_data/
 infer.sh
 embeddings/
+api-keys.json
