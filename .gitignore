@@ -1,0 +1,10 @@
+__pycache__/
+*.csv
+faiss_index.bin
+chunked/
+embeddings/
+src/*
+venv/
+filtered_data/
+infer.sh
+embeddings/
