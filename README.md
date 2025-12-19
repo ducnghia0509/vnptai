@@ -3,15 +3,7 @@
 ## 1. Pipeline Flow
 Hệ thống RAG Chatbot được thiết kế theo luồng xử lý sau:
 
-```mermaid
-flowchart TD
-    A[Người dùng nhập câu hỏi] --> B[Embed câu hỏi thành vector]
-    B --> C[Truy vấn FAISS Vector Database]
-    C --> D[Lấy top-k chunk liên quan]
-    D --> E[Kết hợp với câu hỏi]
-    E --> F[LLM (VNPT AI) sinh câu trả lời]
-    F --> G[Trả về kết quả cho người dùng]
-```
+![pipeline](image.png)
 
 **Mô tả ngắn gọn các bước:**
 1. Người dùng nhập câu hỏi.
