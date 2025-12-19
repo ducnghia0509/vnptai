@@ -38,17 +38,6 @@ def chunk_text(text, chunk_size=512, overlap=32):
     return chunks
 
 def split_by_sentences(text, chunk_size=512, overlap=50):
-    """
-    Chia văn bản theo câu với overlap
-    
-    Args:
-        text: Văn bản cần chia
-        chunk_size: Kích thước mỗi chunk (số từ)
-        overlap: Số từ overlap giữa các chunk
-        
-    Returns:
-        List các chunk
-    """
     # Tách câu đơn giản (có thể cải thiện với NLP library)
     sentences = re.split(r'[.!?]+', text)
     sentences = [s.strip() for s in sentences if s.strip()]
@@ -132,17 +121,16 @@ def download_and_filter_data():
     target_domains_set = set(target_domains)
     
     # Giới hạn mỗi domain (trước khi chunking)
-    # 5 domain đầu: 2000, 3 domain cuối: 1000
     MAX_SAMPLES_PER_DOMAIN = {
-        "Science": 4000,
-        "Computers_and_Electronics": 2000,
-        "Business_and_Industrial": 2000,
-        "Internet_and_Telecom": 3000,
-        "Finance": 1500,
-        "Law_and_Government": 1000,
-        "Health": 1000,
-        "Jobs_and_Education": 1000,
-        "Travel_and_Transportation": 1500
+        "Science": 40,
+        "Computers_and_Electronics": 20,
+        "Business_and_Industrial": 20,
+        "Internet_and_Telecom": 30,
+        "Finance": 15,
+        "Law_and_Government": 10,
+        "Health": 10,
+        "Jobs_and_Education": 10,
+        "Travel_and_Transportation": 15
     }
     
     BATCH_SIZE = 512  # Số samples mỗi file

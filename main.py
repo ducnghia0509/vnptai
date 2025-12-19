@@ -21,27 +21,27 @@ except ImportError as e:
 # =========================================================
 CONFIG = {
     'api_keys_file': 'api-keys.json',
-    'data_path': './src/data/test.json',
+    'data_path': '/code/private_test.json',
     'output_path': 'submission.csv',
     'use_rag': True,
     'max_requests_per_hour': 60,
     'max_requests_per_day': 1000,
     'request_delay': 1.0,
-    'rag_top_k': 2,
-    'max_context_length': 600,
+    'rag_top_k': 3,
+    'max_context_length': 1024,
     'max_retries': 3,
     'timeout': 30
 }
 
 # =========================================================
-# LOAD API KEYS
+# LOAD API 
 # =========================================================
 print("Loading API keys...")
 with open(CONFIG['api_keys_file'], 'r', encoding='utf-8') as f:
     api_keys = json.load(f)
 
 # Get VNPT AI API keys (the small model)
-llm_small = api_keys[2]  # According to your working code
+llm_small = api_keys[1]  # According to your working code
 AUTHORIZATION = llm_small["authorization"]
 TOKEN_KEY = llm_small["tokenKey"]
 TOKEN_ID = llm_small["tokenId"]
@@ -189,14 +189,6 @@ def predict_answer(question, choices):
                 for i, res in enumerate(results, 1):
                     text = res['text']
                     score = res.get('score', 0)
-                    # Truncate if too long
-                    if len(text) > 200:
-                        # Try to cut at sentence boundary
-                        if '.' in text[:250]:
-                            cutoff = text[:250].rfind('.') + 1
-                            text = text[:cutoff] + ".."
-                        else:
-                            text = text[:200] + "..."
                     
                     context_lines.append(f"[Source {i}, relevance: {1-score:.2f}] {text}")
                 
@@ -215,52 +207,51 @@ def predict_answer(question, choices):
     
     # Step 2: Prepare payload for VNPT AI
     if context:
-        # system_content = f"""Bạn là trợ lý AI trả lời câu hỏi trắc nghiệm tiếng Việt.
-
-# THÔNG TIN THAM KHẢO TỪ CƠ SỞ KIẾN THỨC:
-# {context}
-
-# HƯỚNG DẪN:
-# 1. Đọc kỹ câu hỏi và tất cả lựa chọn
-# 2. TRẢ LỜI CHỈ BẰNG MỘT KÝ TỰ: A, B, C, D,....
-# 3. KHÔNG giải thích, KHÔNG thêm văn bản
-# 4. Nếu không chắc chắn, hãy chọn đáp án hợp lý nhất"""
         system_content = f"""
-Bạn là AI chuyên trả lời câu hỏi trắc nghiệm tiếng Việt với độ chính xác cao.
+BẠN LÀ TRỢ LÝ AI TRẢ LỜI CÂU HỎI TRẮC NGHIỆM TIẾNG VIỆT.
 
-NGUỒN DUY NHẤT ĐƯỢC PHÉP SỬ DỤNG:
-- Thông tin trong phần "THÔNG TIN THAM KHẢO TỪ CƠ SỞ KIẾN THỨC" bên dưới.
-- Không sử dụng kiến thức bên ngoài hoặc suy đoán vượt quá dữ liệu đã cho.
-
-THÔNG TIN THAM KHẢO TỪ CƠ SỞ KIẾN THỨC:
+THÔNG TIN THAM KHẢO:
 {context}
 
-QUY TẮC BẮT BUỘC:
-1. Đọc kỹ câu hỏi và TẤT CẢ các phương án trả lời.
-2. Loại trừ các phương án mâu thuẫn, không được hỗ trợ, hoặc không khớp với dữ liệu tham khảo.
-3. Chỉ chọn phương án có bằng chứng phù hợp và trực tiếp nhất từ dữ liệu.
-4. Nếu nhiều phương án gần đúng, chọn phương án CHÍNH XÁC NHẤT, CỤ THỂ NHẤT.
-5. KHÔNG suy luận vượt quá dữ liệu được cung cấp.
+NGUYÊN TẮC BẮT BUỘC:
+- Chỉ sử dụng thông tin có trong THÔNG TIN THAM KHẢO.
+- Không suy đoán, không bịa.
+- Nếu ở câu hỏi nói về nội dung nhạy cảm như chiến tranh, chính sách chính trị, an toàn, quốc phòng, tranh chấp biển, lãnh thổ, chiến tranh, chủng tộc,...thì bạn không được trả lời và chọn đáp án gần nghĩa nhất với Không thể trả lời câu hỏi này
+- Nếu câu hỏi là kiến thức tính toán phức tạp, bạn cần làm từng bước trong *suy nghĩ* rồi mới được đưa ra câu trả lời 
+CÁCH XỬ LÝ:
+1. Nếu có thể xác định ĐÁP ÁN ĐÚNG từ thông tin → chọn phương án tương ứng.
+2. Nếu KHÔNG THỂ xác định đáp án vì:
+   - Thiếu dữ liệu
+   - Các phương án đều không được đề cập
+   - Câu hỏi mơ hồ / vượt phạm vi
+→ Tìm đáp án gần nghĩa với: Không thể trả lời câu hỏi này
 
-ĐỊNH DẠNG TRẢ LỜI:
-- Chỉ trả lời DUY NHẤT MỘT KÝ TỰ IN HOA: A, B, C, D, ...
-- KHÔNG giải thích.
-- KHÔNG thêm ký tự, dấu chấm, hoặc văn bản nào khác.
-
-LƯU Ý QUAN TRỌNG:
-- Nếu thông tin không đầy đủ, hãy chọn phương án phù hợp nhất với dữ liệu hiện có, KHÔNG bỏ trống.
+YÊU CẦU ĐẦU RA:
+- Nếu trả lời được → chỉ 1 ký tự: A, B, C, D, ...
+- Tuyệt đối không thêm văn bản gì ngoài ký tự chữ cái viết hoa đã chọn.
 """
 
     else:
-        system_content = """Bạn là hệ thống trả lời câu hỏi trắc nghiệm.
+        system_content = """
+BẠN LÀ HỆ THỐNG TRẢ LỜI CÂU HỎI TRẮC NGHIỆM.
 
-HƯỚNG DẪN:
-1. Đọc kỹ câu hỏi và tất cả lựa chọn
-2. TRẢ LỜI CHỈ BẰNG MỘT KÝ TỰ: A, B, C, hoặc D
-3. KHÔNG giải thích, KHÔNG thêm văn bản
-4. Nếu không chắc chắn, hãy chọn đáp án có vẻ hợp lý nhất
+NGUYÊN TẮC:
+- Dựa trên kiến thức phổ thông và logic.
+- Không bịa đặt thông tin chuyên ngành nếu không chắc chắn.
 
-Ví dụ trả lời đúng: C"""
+CÁCH LÀM:
+1. Đọc kỹ câu hỏi và tất cả các phương án.
+2. Nếu là câu hỏi logic / toán học, hãy suy nghĩ từng bước một CÁCH NỘI BỘ.
+3. Chọn phương án đúng hoặc hợp lý nhất.
+
+YÊU CẦU ĐẦU RA:
+- CHỈ MỘT KÝ TỰ DUY NHẤT: A, B, C, D, E, ...
+- KHÔNG giải thích.
+- KHÔNG thêm bất kỳ văn bản nào khác.
+
+VÍ DỤ ĐẦU RA HỢP LỆ:
+C
+"""
     
     user_content = f"Câu hỏi: {question}\n\nLựa chọn:\n{choices}"
     
@@ -421,77 +412,78 @@ def main():
     # Load progress
     processed_qids, processed_count = load_existing_progress()
     total = len(dataset)
-    
-    print(f"📊 Dataset: {total} questions total")
-    print(f"📈 Progress: {processed_count} already processed")
-    print(f"⚙️  Mode: {'RAG + LLM' if CONFIG['use_rag'] else 'LLM only'}")
-    print(f"🤖 Model: vnptai_hackathon_small")
-    print(f"⏰ Start time: {datetime.now().strftime('%H:%M:%S')}")
-    print("="*70 + "\n")
+
     
     # Check if we've already processed everything
     if processed_count >= total:
-        print("✅ All questions have already been processed!")
         return
     
-    # Open output file
+    # Open output files
     file_mode = 'a' if processed_count > 0 else 'w'
-    with open(CONFIG['output_path'], file_mode, newline='', encoding='utf-8') as f:
+    with open(CONFIG['output_path'], file_mode, newline='', encoding='utf-8') as f, \
+         open('submission_time.csv', file_mode, newline='', encoding='utf-8') as f_time:
         writer = csv.writer(f)
-        
+        writer_time = csv.writer(f_time)
+
         # Write header if new file
         if file_mode == 'w':
             writer.writerow(['qid', 'answer'])
-        
+            writer_time.writerow(['qid', 'answer', 'time'])
+
         # Process questions
         for idx, item in enumerate(tqdm(dataset, desc="Processing", unit="q")):
             qid = item['qid']
-            
+
             # Skip if already processed
             if qid in processed_qids:
                 continue
-            
+
             question = item['question']
             choices = "\n".join(item['choices'])
-            
+
             # Display current question
             print(f"\n[{idx+1}/{total}] QID: {qid}")
             if len(question) > 80:
                 print(f"   ❓ {question[:80]}...")
             else:
                 print(f"   ❓ {question}")
-            
+
             # Check quota before making request
             if not quota_manager.wait_if_needed():
                 break
-            
-            # Get prediction
+
+            # Get prediction and measure time
             try:
+                start_time = time.time()
                 answer = predict_answer(question, choices)
-                print(f"   ✅ Answer: {answer}")
-                
+                elapsed = time.time() - start_time
+
                 # Record the API request
                 quota_manager.record_request()
-                
-                # Write result
+
+                # Write result to both files
                 writer.writerow([qid, answer])
+                writer_time.writerow([qid, answer, f"{elapsed:.4f}"])
                 f.flush()  # Ensure immediate write
-                
+                f_time.flush()
+
                 # Add to processed set
                 processed_qids.add(qid)
-                
+
             except Exception as e:
                 print(f"   ❌ Error: {e}")
                 # Write fallback answer
                 writer.writerow([qid, 'A'])
+                writer_time.writerow([qid, 'A', '0.0000'])
                 f.flush()
+                f_time.flush()
                 processed_qids.add(qid)
-            
+
             # Show quota stats
             stats = quota_manager.get_stats()
             print(f"   📊 Quota: {stats['hourly']}/{stats['max_hourly']} per hour, "
                   f"{stats['daily']}/{stats['max_daily']} per day")
-            
+
             # Delay between requests
             time.sleep(CONFIG['request_delay'])
     

@@ -160,8 +160,13 @@ def create_embeddings(input_files: List[str],
         texts = [item["text"] for item in texts_data]
         embeddings = creator.process_texts(texts)
         
-        # Lưu kết quả
-        output_file = os.path.join(output_dir, f"embeddings_{os.path.basename(input_file)}")
+        # Lưu kết quả - giữ cấu trúc thư mục domain
+        # Lấy domain name từ đường dẫn (thư mục cha của file)
+        domain_name = os.path.basename(os.path.dirname(input_file))
+        domain_output_dir = os.path.join(output_dir, domain_name)
+        os.makedirs(domain_output_dir, exist_ok=True)
+        
+        output_file = os.path.join(domain_output_dir, f"embeddings_{os.path.basename(input_file)}")
         
         with open(output_file, 'w', encoding='utf-8') as f:
             for item, embedding in zip(texts_data, embeddings):

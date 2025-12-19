@@ -6,15 +6,18 @@ import os
 
 print("Building FAISS index from embeddings...")
 
-# Find all embedding files
-jsonl_files = glob.glob("embeddings/embeddings_batch_*.jsonl")
+# Find all embedding files - now organized by domain folders
+jsonl_files = glob.glob("embeddings/*/embeddings_batch_*.jsonl")
+if not jsonl_files:
+    # Try old flat structure
+    jsonl_files = glob.glob("embeddings/embeddings_batch_*.jsonl")
 if not jsonl_files:
     # Try current directory
     jsonl_files = glob.glob("embeddings_batch_*.jsonl")
 
 if not jsonl_files:
     print("❌ No embedding files found!")
-    print("Please ensure embedding files are in 'embeddings/' directory or current directory.")
+    print("Please ensure embedding files are in 'embeddings/<domain>/' directories.")
     exit(1)
 
 print(f"Found {len(jsonl_files)} embedding files")
@@ -37,9 +40,9 @@ for file_path in sorted(jsonl_files):
                 # Store metadata
                 metadata = {
                     'text': data['text'],
-                    'source_file': data.get('source_file', 'unknown'),
-                    'domain': data.get('domain', 'unknown'),
-                    'original_index': data.get('original_index', 0)
+                    'source_file': os.path.basename(file_path),
+                    'domain': data.get('metadata', {}).get('domain', 'unknown'),
+                    'original_index': len(all_metadata)
                 }
                 all_metadata.append(metadata)
                 
