@@ -1,49 +1,103 @@
-## Pipeline xây dựng RAG Chatbot
+# RAG Chatbot VNPT
 
-### Bước 1. Thu thập và lọc dữ liệu  
-Sử dụng dataset **`VTSNLP/vietnamese_curated_dataset`** từ HuggingFace.  
-Dữ liệu được lọc theo các chủ đề (topic):
+## 1. Pipeline Flow
+Hệ thống RAG Chatbot được thiết kế theo luồng xử lý sau:
 
-- Science  
-- Computers_and_Electronics  
-- Internet_and_Telecom  
-- Finance  
-- Law_and_Government  
-- Health  
-- …  
+```mermaid
+flowchart TD
+    A[Người dùng nhập câu hỏi] --> B[Embed câu hỏi thành vector]
+    B --> C[Truy vấn FAISS Vector Database]
+    C --> D[Lấy top-k chunk liên quan]
+    D --> E[Kết hợp với câu hỏi]
+    E --> F[LLM (VNPT AI) sinh câu trả lời]
+    F --> G[Trả về kết quả cho người dùng]
+```
 
-Với mỗi topic, hệ thống lấy khoảng **2.000 mẫu văn bản** nhằm đảm bảo sự cân bằng dữ liệu giữa các miền kiến thức.
-
----
-
-### Bước 2. Chunking văn bản  
-Mỗi văn bản được chia nhỏ thành các đoạn (chunk) để phục vụ cho truy hồi ngữ nghĩa:
-
-- **Chunk size**: 512 từ  
-- **Overlap**: 50 từ  
-- Phương pháp: chia theo câu, đảm bảo tính liền mạch ngữ nghĩa giữa các chunk.
+**Mô tả ngắn gọn các bước:**
+1. Người dùng nhập câu hỏi.
+2. Câu hỏi được encode thành vector embedding.
+3. Truy vấn FAISS để lấy các chunk liên quan.
+4. Kết hợp các chunk với câu hỏi để tạo ngữ cảnh truy hồi.
+5. Mô hình ngôn ngữ lớn (LLM) sinh câu trả lời dựa trên ngữ cảnh.
 
 ---
 
-### Bước 3. Embedding  
-Các chunk sau khi được tạo sẽ được chuyển đổi sang vector embedding bằng mô hình embedding ngôn ngữ (sentence embedding model).  
-Quá trình embedding được thực hiện **offline** và lưu trữ lại để tái sử dụng, tránh tính toán lại trong quá trình inference.
+## 2. Data Processing
+
+### 2.1 Thu thập và lọc dữ liệu
+- Sử dụng dataset **`VTSNLP/vietnamese_curated_dataset`** từ HuggingFace.
+- Lọc theo các chủ đề:
+  - Science
+  - Computers_and_Electronics
+  - Internet_and_Telecom
+  - Finance
+  - Law_and_Government
+  - Health
+  - …
+- Mỗi topic lấy khoảng **2.000 mẫu văn bản** để cân bằng dữ liệu giữa các miền kiến thức.
+
+### 2.2 Chunking văn bản
+- Mỗi văn bản được chia thành các chunk để phục vụ truy hồi ngữ nghĩa.
+- **Chunk size:** 512 từ
+- **Overlap:** 50 từ
+- Phương pháp: chia theo câu, đảm bảo liền mạch ngữ nghĩa.
+
+### 2.3 Embedding
+- Chuyển các chunk thành vector embedding bằng mô hình embedding ngôn ngữ (**sentence embedding**).
+- Quá trình embedding được thực hiện **offline** và lưu trữ để tái sử dụng.
+- Giảm tải tính toán cho inference.
 
 ---
 
-### Bước 4. Xây dựng Vector Database với FAISS  
-Các embedding vector được insert vào **FAISS (CPU)** để xây dựng cơ sở dữ liệu vector phục vụ truy hồi:
+## 3. Resource Initialization
 
-- FAISS index được build một lần và lưu ra file (`.faiss`)  
-- Index được load sẵn khi khởi động hệ thống để đảm bảo tốc độ inference nhanh.
+### 3.1 Vector Database
+- Sử dụng **FAISS (CPU)** để lưu trữ các embedding vector.
+- Index được build một lần và lưu ra file (`faiss_index.bin`).
+- Metadata đi kèm (`metadata.json`) lưu thông tin text gốc tương ứng với vector.
+
+### 3.2 Khởi tạo RAG System
+- Code chính: `main.py`
+- Cấu hình RAG và VNPT AI API được lưu trong `api-keys.json`.
+- Khi khởi chạy:
+  1. Load FAISS index.
+  2. Khởi tạo VNPTEmbedder để tạo embedding cho câu hỏi.
+  3. Khởi tạo RAGSystem để thực hiện truy hồi ngữ nghĩa.
+- Hệ thống kiểm tra FAISS index tồn tại, nếu không có sẽ cảnh báo và vô hiệu hóa RAG.
+
+### 3.3 API và Quota Management
+- Mỗi request gửi tới **VNPT AI API** có kiểm soát:
+  - `max_requests_per_hour` và `max_requests_per_day`
+  - Delay giữa các request (`request_delay`)
+- Quota được ghi nhận và kiểm tra tự động trước mỗi request.
+
+### 3.4 Inference Pipeline
+1. Nhận câu hỏi từ dataset hoặc người dùng.
+2. Nếu RAG được bật:
+   - Encode câu hỏi thành embedding vector.
+   - Truy vấn FAISS lấy top-k chunk.
+   - Tạo ngữ cảnh truy hồi cho LLM.
+3. Chuẩn bị payload và gửi tới VNPT AI API.
+4. Nhận kết quả, làm sạch và trả về **một ký tự duy nhất** (A/B/C/D/...).
 
 ---
 
-### Bước 5. Triển khai RAG Chatbot  
-Hệ thống RAG Chatbot hoạt động theo luồng:
+## 4. Chạy hệ thống
 
-1. Nhận câu hỏi từ người dùng  
-2. Embed câu hỏi thành vector  
-3. Truy vấn FAISS để lấy top-k chunk liên quan  
-4. Kết hợp ngữ cảnh truy hồi với câu hỏi  
-5. Sinh câu trả lời bằng mô hình ngôn ngữ lớn (LLM)
+```bash
+python main.py
+```
+
+- Kết quả lưu vào `submission.csv`.
+- Thời gian xử lý từng câu hỏi lưu vào `submission_time.csv`.
+- Nếu RAG không khả dụng, hệ thống vẫn có thể trả lời dựa trên VNPT AI LLM.
+
+---
+
+## 5. Dependencies
+- Python >= 3.8
+- requests
+- tqdm
+- FAISS (`faiss-cpu`)
+- json, csv, os, time, datetime (có sẵn)
+- Các module nội bộ: `embedder.py`, `rag_system.py`

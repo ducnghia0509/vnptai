@@ -4,7 +4,7 @@ import re
 from datasets import load_dataset
 from tqdm import tqdm
 
-def chunk_text(text, chunk_size=512, overlap=32):
+def chunk_text(text, chunk_size=256, overlap=32):
     """
     Chia văn bản thành các chunk với overlap
     
@@ -37,7 +37,7 @@ def chunk_text(text, chunk_size=512, overlap=32):
     
     return chunks
 
-def split_by_sentences(text, chunk_size=512, overlap=50):
+def split_by_sentences(text, chunk_size=256, overlap=32):
     # Tách câu đơn giản (có thể cải thiện với NLP library)
     sentences = re.split(r'[.!?]+', text)
     sentences = [s.strip() for s in sentences if s.strip()]
@@ -113,31 +113,31 @@ def download_and_filter_data():
     
     # CHUNKING CONFIG
     CHUNK_CONFIGS = {
-        "small": {"chunk_size": 256, "overlap": 25, "split_method": "sentences"},
-        "medium": {"chunk_size": 512, "overlap": 50, "split_method": "sentences"},
-        "large": {"chunk_size": 1024, "overlap": 100, "split_method": "sentences"},
+        "small": {"chunk_size": 256, "overlap": 32, "split_method": "sentences"},
+        "medium": {"chunk_size": 512, "overlap": 64, "split_method": "sentences"},
+        "large": {"chunk_size": 1024, "overlap": 128, "split_method": "sentences"},
     }
     
     target_domains_set = set(target_domains)
     
     # Giới hạn mỗi domain (trước khi chunking)
     MAX_SAMPLES_PER_DOMAIN = {
-        "Science": 40,
-        "Computers_and_Electronics": 20,
-        "Business_and_Industrial": 20,
-        "Internet_and_Telecom": 30,
-        "Finance": 15,
-        "Law_and_Government": 10,
-        "Health": 10,
-        "Jobs_and_Education": 10,
-        "Travel_and_Transportation": 15
+        "Science": 3000,
+        "Computers_and_Electronics": 2500,
+        "Business_and_Industrial": 1500,
+        "Internet_and_Telecom": 3000,
+        "Finance": 1500,
+        "Law_and_Government": 1000,
+        "Health": 1000,
+        "Jobs_and_Education": 1000,
+        "Travel_and_Transportation": 1500
     }
     
     BATCH_SIZE = 512  # Số samples mỗi file
     OUTPUT_DIR = "./filtered_data"
     
     # Chọn config chunking
-    CHUNKING_CONFIG_NAME = "medium"  # small/medium/large
+    CHUNKING_CONFIG_NAME = "small"  # small/medium/large
     CHUNK_SIZE = CHUNK_CONFIGS[CHUNKING_CONFIG_NAME]["chunk_size"]
     OVERLAP = CHUNK_CONFIGS[CHUNKING_CONFIG_NAME]["overlap"]
     SPLIT_METHOD = CHUNK_CONFIGS[CHUNKING_CONFIG_NAME]["split_method"]
